@@ -3,8 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:  # Permite ejecución manual
 
 jobs:
@@ -20,13 +18,13 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Instalar dependencias del sistema
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
           git openjdk-11-jdk wget unzip zip \
-          libffi-dev libssl-dev zlib1g-dev \
-          autoconf automake libtool pkg-config
+          build-essential autoconf automake libtool pkg-config \
+          libffi-dev libssl-dev zlib1g-dev
     
     - name: Instalar build-tools de Android
       run: |
@@ -38,12 +36,12 @@ jobs:
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "build-tools;31.0.0" "platforms;android-31"
         echo "export PATH=\$PATH:$ANDROID_SDK_ROOT/build-tools/31.0.0" >> $GITHUB_ENV
 
-    - name: Instalar Buildozer y dependencias
+    - name: Install Buildozer and dependencies
       run: |
         pip install --upgrade pip
         pip install buildozer cython flet requests
 
-    - name: Crear buildozer.spec
+    - name: Create buildozer.spec
       run: |
         cat > buildozer.spec << 'SPEC'
         [app]
@@ -59,7 +57,7 @@ jobs:
         
         android.permissions = INTERNET,ACCESS_NETWORK_STATE
         
-        android.api = 31
+        android.api = 33
         android.minapi = 21
         
         orientation = portrait
@@ -69,11 +67,17 @@ jobs:
         warn_on_root = 0
         SPEC
 
-    - name: Compilar APK
+    - name: Accept Android SDK licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
+
+    - name: Build APK
       run: |
         buildozer android debug
 
-    - name: Subir APK como artifact
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: weatherapp-apk
