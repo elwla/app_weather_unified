@@ -1,4 +1,4 @@
-name: Build APK - Pre-configured SDK
+name: Build APK - Fixed SDK Setup
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
         pip install --upgrade pip
         pip install cython buildozer flet
 
-    - name: Setup Android SDK manually
+    - name: Setup Android SDK correctly
       run: |
         # Configurar entorno Android
         export ANDROID_HOME=$HOME/android-sdk
@@ -45,24 +45,25 @@ jobs:
         mkdir -p ~/.android
         echo "count=0" > ~/.android/repositories.cfg
         
-        # Descargar Command Line Tools
+        # Descargar Command Line Tools CORREGIDO
         cd $ANDROID_HOME
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
         unzip -q commandlinetools-linux-9477386_latest.zip
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/
-        rm -rf cmdline-tools commandlinetools-linux-9477386_latest.zip
+        
+        # Mover correctamente los archivos
+        mkdir -p cmdline-tools
+        mv cmdline-tools latest
+        mv latest cmdline-tools/
+        
+        rm commandlinetools-linux-9477386_latest.zip
         
         export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
         
-        # Aceptar licencias ANTES de instalar anything
+        # Aceptar licencias
         yes | sdkmanager --licenses
         
-        # Instalar componentes específicos que necesitamos
+        # Instalar componentes
         sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
-        
-        # Verificar instalación
-        sdkmanager --list_installed
 
     - name: Create buildozer.spec with custom SDK path
       run: |
