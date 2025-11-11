@@ -1,4 +1,4 @@
-name: Build APK - Let Buildozer Handle Everything
+name: Build APK - With Cython
 
 on:
   push:
@@ -27,10 +27,13 @@ jobs:
           git \
           wget \
           unzip \
-          zip
+          zip \
+          build-essential
 
-    - name: Install Buildozer and Flet
+    - name: Install Python dependencies
       run: |
+        pip install --upgrade pip
+        pip install cython
         pip install buildozer
         pip install flet
 
