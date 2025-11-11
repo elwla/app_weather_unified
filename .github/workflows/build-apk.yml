@@ -28,7 +28,7 @@ jobs:
           libffi-dev libssl-dev zlib1g-dev \
           autoconf automake libtool pkg-config
     
-        - name: Instalar build-tools de Android
+    - name: Instalar build-tools de Android
       run: |
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
         unzip tools.zip -d $HOME/cmdline-tools
