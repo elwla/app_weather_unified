@@ -1,4 +1,4 @@
-name: Build APK - With Cython
+name: Build APK - With License Acceptance
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
     - name: Checkout code
@@ -33,9 +34,7 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install cython
-        pip install buildozer
-        pip install flet
+        pip install cython buildozer flet
 
     - name: Create buildozer.spec
       run: |
@@ -63,8 +62,26 @@ jobs:
         warn_on_root = 0
         SPEC
 
-    - name: Build APK
+    - name: Pre-configure Android environment
       run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+
+    - name: Build with license workaround
+      run: |
+        # Primera ejecución: descarga SDK pero falla por licencias
+        buildozer android clean || true
+        
+        # Esperar a que se descargue el SDK
+        echo "Waiting for SDK download..."
+        sleep 30
+        
+        # Aceptar licencias usando sdkmanager
+        if [ -f "$HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager" ]; then
+          yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
+        fi
+        
+        # Compilar finalmente
         buildozer -v android debug
 
     - name: Upload APK
