@@ -57,10 +57,9 @@ jobs:
         warn_on_root = 0
         SPEC
 
-    - name: Initialize Buildozer and download SDK
+    - name: Download Android SDK
       run: |
-        buildozer init -y
-        # Esta primera ejecución fallará por las licencias, pero descargará el SDK
+        # Esta ejecución fallará por las licencias, pero descargará el SDK
         buildozer android clean || true
 
     - name: Accept Android SDK licenses
@@ -68,7 +67,7 @@ jobs:
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
         # Esperar a que el SDK se descargue
-        sleep 10
+        sleep 30
         yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
 
     - name: Build APK
