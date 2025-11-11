@@ -1,8 +1,8 @@
-name: Build APK - Fixed SDK Setup
+name: Build APK - API 29
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -11,87 +11,41 @@ jobs:
     timeout-minutes: 60
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
-    - name: Install system dependencies
+    - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          python3-pip \
-          openjdk-11-jdk \
-          git \
-          wget \
-          unzip \
-          zip \
-          build-essential
+        sudo apt-get install -y python3-pip openjdk-8-jdk git
 
-    - name: Install Python dependencies
+    - name: Install Buildozer and Flet
+      run: pip3 install cython buildozer flet
+
+    - name: Pre-create license files
       run: |
-        pip install --upgrade pip
-        pip install cython buildozer flet
+        mkdir -p $HOME/.buildozer/android/platform/android-sdk/licenses
+        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+        echo "84831b9409646a918e30573b4d6d4f0c5d256b5a" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-ndk-license
+        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
-    - name: Setup Android SDK correctly
-      run: |
-        # Configurar entorno Android
-        export ANDROID_HOME=$HOME/android-sdk
-        export ANDROID_SDK_ROOT=$ANDROID_HOME
-        mkdir -p $ANDROID_HOME
-        mkdir -p ~/.android
-        echo "count=0" > ~/.android/repositories.cfg
-        
-        # Descargar Command Line Tools CORREGIDO
-        cd $ANDROID_HOME
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip -q commandlinetools-linux-9477386_latest.zip
-        
-        # Mover correctamente los archivos
-        mkdir -p cmdline-tools
-        mv cmdline-tools latest
-        mv latest cmdline-tools/
-        
-        rm commandlinetools-linux-9477386_latest.zip
-        
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-        
-        # Aceptar licencias
-        yes | sdkmanager --licenses
-        
-        # Instalar componentes
-        sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
-
-    - name: Create buildozer.spec with custom SDK path
+    - name: Create buildozer.spec for API 29
       run: |
         cat > buildozer.spec << 'SPEC'
         [app]
         title = Weather App
         package.name = weatherapp
         package.domain = org.test.weatherapp
-        
         source.dir = .
         source.include_exts = py,png,jpg,kv,atlas,json
-        
         version = 0.1
         requirements = python3, flet
-        
         android.permissions = INTERNET
-        
-        android.api = 31
+        android.api = 29
         android.minapi = 21
-        
         orientation = portrait
-        
         [buildozer]
         log_level = 2
         warn_on_root = 0
-        
-        # Usar nuestro SDK pre-configurado
-        android.sdk_path = /home/runner/android-sdk
         SPEC
 
     - name: Build APK
@@ -101,6 +55,5 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: weatherapp-apk
+        name: weather-app
         path: bin/*.apk
-        retention-days: 30
