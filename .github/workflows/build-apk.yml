@@ -1,4 +1,4 @@
-name: Build APK - Fixed SDK Structure
+name: Build APK - Ubuntu 20.04 Stable
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # Usar versión más estable
     timeout-minutes: 60
     
     steps:
@@ -16,42 +16,28 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-11-jdk git wget unzip
+        sudo apt-get install -y \
+          python3 \
+          python3-pip \
+          python3-venv \
+          openjdk-8-jdk \
+          git \
+          zip \
+          unzip
 
-    - name: Install Buildozer and Flet
-      run: pip3 install cython buildozer flet
-
-    - name: Setup Android SDK with correct structure
+    - name: Create virtual environment
       run: |
-        # Configurar entorno
-        export ANDROID_HOME=$HOME/android-sdk
-        mkdir -p $ANDROID_HOME
-        
-        # Descargar Command Line Tools
-        cd $ANDROID_HOME
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip -q commandlinetools-linux-9477386_latest.zip
-        
-        # Crear estructura CORRECTA para nueva versión
-        mkdir -p cmdline-tools
-        mv cmdline-tools cmdline-tools-temp
-        mv cmdline-tools-tmp/latest cmdline-tools/
-        rm -rf cmdline-tools-temp
-        
-        # Configurar PATH
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-        
-        # Configurar Android
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-        
-        # Aceptar licencias
-        yes | sdkmanager --licenses
-        
-        # Instalar plataforma Android 29
-        sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
+        python3 -m venv venv
+        source venv/bin/activate
 
-    - name: Create buildozer.spec with correct SDK path
+    - name: Install Buildozer in virtual environment
+      run: |
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install buildozer
+        pip install flet
+
+    - name: Create minimal buildozer.spec
       run: |
         cat > buildozer.spec << 'SPEC'
         [app]
@@ -63,18 +49,17 @@ jobs:
         version = 0.1
         requirements = python3, flet
         android.permissions = INTERNET
-        android.api = 29
+        android.api = 28
         android.minapi = 21
         orientation = portrait
         [buildozer]
         log_level = 2
         warn_on_root = 0
-        # Usar nuestro SDK pre-configurado
-        android.sdk_path = /home/runner/android-sdk
         SPEC
 
-    - name: Build APK
+    - name: Build APK directly
       run: |
+        source venv/bin/activate
         buildozer -v android debug
 
     - name: Upload APK
@@ -82,3 +67,4 @@ jobs:
       with:
         name: weatherapp-apk
         path: bin/*.apk
+        retention-days: 30
