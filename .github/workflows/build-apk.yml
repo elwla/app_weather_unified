@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK - Let Buildozer Handle Everything
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout código
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
@@ -22,14 +22,17 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          git openjdk-11-jdk wget unzip zip \
-          build-essential autoconf automake libtool pkg-config \
-          libffi-dev libssl-dev zlib1g-dev
+          python3-pip \
+          openjdk-11-jdk \
+          git \
+          wget \
+          unzip \
+          zip
 
-    - name: Install Buildozer and dependencies
+    - name: Install Buildozer and Flet
       run: |
-        pip install --upgrade pip
-        pip install buildozer cython flet requests
+        pip install buildozer
+        pip install flet
 
     - name: Create buildozer.spec
       run: |
@@ -43,11 +46,11 @@ jobs:
         source.include_exts = py,png,jpg,kv,atlas,json
         
         version = 0.1
-        requirements = python3,kivy,flet,requests
+        requirements = python3, flet
         
-        android.permissions = INTERNET,ACCESS_NETWORK_STATE
+        android.permissions = INTERNET
         
-        android.api = 33
+        android.api = 31
         android.minapi = 21
         
         orientation = portrait
@@ -57,24 +60,11 @@ jobs:
         warn_on_root = 0
         SPEC
 
-    - name: Download Android SDK
-      run: |
-        # Esta ejecución fallará por las licencias, pero descargará el SDK
-        buildozer android clean || true
-
-    - name: Accept Android SDK licenses
-      run: |
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-        # Esperar a que el SDK se descargue
-        sleep 30
-        yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
-
     - name: Build APK
       run: |
         buildozer -v android debug
 
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: weatherapp-apk
