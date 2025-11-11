@@ -1,4 +1,4 @@
-name: Build APK - With License Acceptance
+name: Build APK - Pre-configured SDK
 
 on:
   push:
@@ -36,7 +36,35 @@ jobs:
         pip install --upgrade pip
         pip install cython buildozer flet
 
-    - name: Create buildozer.spec
+    - name: Setup Android SDK manually
+      run: |
+        # Configurar entorno Android
+        export ANDROID_HOME=$HOME/android-sdk
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        mkdir -p $ANDROID_HOME
+        mkdir -p ~/.android
+        echo "count=0" > ~/.android/repositories.cfg
+        
+        # Descargar Command Line Tools
+        cd $ANDROID_HOME
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip -q commandlinetools-linux-9477386_latest.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/
+        rm -rf cmdline-tools commandlinetools-linux-9477386_latest.zip
+        
+        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+        
+        # Aceptar licencias ANTES de instalar anything
+        yes | sdkmanager --licenses
+        
+        # Instalar componentes específicos que necesitamos
+        sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+        
+        # Verificar instalación
+        sdkmanager --list_installed
+
+    - name: Create buildozer.spec with custom SDK path
       run: |
         cat > buildozer.spec << 'SPEC'
         [app]
@@ -60,28 +88,13 @@ jobs:
         [buildozer]
         log_level = 2
         warn_on_root = 0
+        
+        # Usar nuestro SDK pre-configurado
+        android.sdk_path = /home/runner/android-sdk
         SPEC
 
-    - name: Pre-configure Android environment
+    - name: Build APK
       run: |
-        mkdir -p ~/.android
-        touch ~/.android/repositories.cfg
-
-    - name: Build with license workaround
-      run: |
-        # Primera ejecución: descarga SDK pero falla por licencias
-        buildozer android clean || true
-        
-        # Esperar a que se descargue el SDK
-        echo "Waiting for SDK download..."
-        sleep 30
-        
-        # Aceptar licencias usando sdkmanager
-        if [ -f "$HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager" ]; then
-          yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
-        fi
-        
-        # Compilar finalmente
         buildozer -v android debug
 
     - name: Upload APK
