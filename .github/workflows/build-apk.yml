@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Permite ejecución manual
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,16 +25,6 @@ jobs:
           git openjdk-11-jdk wget unzip zip \
           build-essential autoconf automake libtool pkg-config \
           libffi-dev libssl-dev zlib1g-dev
-    
-    - name: Instalar build-tools de Android
-      run: |
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
-        unzip tools.zip -d $HOME/cmdline-tools
-        export ANDROID_SDK_ROOT=$HOME/android-sdk
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        mv $HOME/cmdline-tools/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "build-tools;31.0.0" "platforms;android-31"
-        echo "export PATH=\$PATH:$ANDROID_SDK_ROOT/build-tools/31.0.0" >> $GITHUB_ENV
 
     - name: Install Buildozer and dependencies
       run: |
@@ -67,15 +57,23 @@ jobs:
         warn_on_root = 0
         SPEC
 
+    - name: Initialize Buildozer and download SDK
+      run: |
+        buildozer init -y
+        # Esta primera ejecución fallará por las licencias, pero descargará el SDK
+        buildozer android clean || true
+
     - name: Accept Android SDK licenses
       run: |
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
+        # Esperar a que el SDK se descargue
+        sleep 10
         yes | $HOME/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
 
     - name: Build APK
       run: |
-        buildozer android debug
+        buildozer -v android debug
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
