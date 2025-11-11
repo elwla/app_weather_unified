@@ -1,8 +1,8 @@
-name: Build APK - API 29
+name: Build APK - Fixed SDK Structure
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -16,19 +16,42 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-8-jdk git
+        sudo apt-get install -y python3-pip openjdk-11-jdk git wget unzip
 
     - name: Install Buildozer and Flet
       run: pip3 install cython buildozer flet
 
-    - name: Pre-create license files
+    - name: Setup Android SDK with correct structure
       run: |
-        mkdir -p $HOME/.buildozer/android/platform/android-sdk/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        echo "84831b9409646a918e30573b4d6d4f0c5d256b5a" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-ndk-license
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > $HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+        # Configurar entorno
+        export ANDROID_HOME=$HOME/android-sdk
+        mkdir -p $ANDROID_HOME
+        
+        # Descargar Command Line Tools
+        cd $ANDROID_HOME
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip -q commandlinetools-linux-9477386_latest.zip
+        
+        # Crear estructura CORRECTA para nueva versión
+        mkdir -p cmdline-tools
+        mv cmdline-tools cmdline-tools-temp
+        mv cmdline-tools-tmp/latest cmdline-tools/
+        rm -rf cmdline-tools-temp
+        
+        # Configurar PATH
+        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+        
+        # Configurar Android
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
+        
+        # Aceptar licencias
+        yes | sdkmanager --licenses
+        
+        # Instalar plataforma Android 29
+        sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
 
-    - name: Create buildozer.spec for API 29
+    - name: Create buildozer.spec with correct SDK path
       run: |
         cat > buildozer.spec << 'SPEC'
         [app]
@@ -46,6 +69,8 @@ jobs:
         [buildozer]
         log_level = 2
         warn_on_root = 0
+        # Usar nuestro SDK pre-configurado
+        android.sdk_path = /home/runner/android-sdk
         SPEC
 
     - name: Build APK
@@ -55,5 +80,5 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: weather-app
+        name: weatherapp-apk
         path: bin/*.apk
