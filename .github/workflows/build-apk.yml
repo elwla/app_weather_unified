@@ -1,0 +1,71 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Instalar dependencias del sistema
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          git openjdk-11-jdk wget unzip zip \
+          libffi-dev libssl-dev zlib1g-dev \
+          autoconf automake libtool pkg-config
+
+    - name: Instalar Buildozer y dependencias
+      run: |
+        pip install --upgrade pip
+        pip install buildozer cython flet requests
+
+    - name: Crear buildozer.spec
+      run: |
+        cat > buildozer.spec << 'SPEC'
+        [app]
+        title = Weather App
+        package.name = weatherapp
+        package.domain = org.test.weatherapp
+        
+        source.dir = .
+        source.include_exts = py,png,jpg,kv,atlas,json
+        
+        version = 0.1
+        requirements = python3,kivy,flet,requests
+        
+        android.permissions = INTERNET,ACCESS_NETWORK_STATE
+        
+        android.api = 31
+        android.minapi = 21
+        
+        orientation = portrait
+        
+        [buildozer]
+        log_level = 2
+        warn_on_root = 0
+        SPEC
+
+    - name: Compilar APK
+      run: |
+        buildozer android debug
+
+    - name: Subir APK como artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: weatherapp-apk
+        path: bin/*.apk
+        retention-days: 30
